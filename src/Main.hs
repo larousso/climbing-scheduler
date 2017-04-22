@@ -4,14 +4,14 @@ module Main where
 
 import Db
 import Users
-
+import Login
 import Web.Scotty
 import Web.Scotty.Internal.Types (ActionT)
 import Network.Wai
 import Network.Wai.Middleware.Static
 import Network.Wai.Middleware.RequestLogger (logStdoutDev, logStdout)
 import Network.Wai.Middleware.HttpAuth
-import Network.HTTP.Types.Status (created201, internalServerError500, notFound404, ok200, badRequest400)
+import Network.HTTP.Types.Status (created201, internalServerError500, notFound404, ok200, badRequest400, noContent204, unauthorized401)
 import Control.Applicative
 import Control.Monad.IO.Class
 import qualified Data.Configurator as C
@@ -55,6 +55,14 @@ main = do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
           middleware $ auth
 
+          post "/login" $ do
+            loginForm <- jsonData
+            session <- liftIO $ doLogin pool loginForm
+            case session of 
+              Unauthorized ->
+                status unauthorized401
+              UserSession l ->
+                status ok200
           get "/users" $ do
               users <- liftIO $ findAllUsers pool
               status ok200
@@ -65,7 +73,18 @@ main = do
               case successOrFailure of
                 Left err -> do
                     status badRequest400
-                    Web.Scotty.text err
+                    Web.Scotty.json $ object ["error" .= err]
+                Right u -> do
+                    status created201
+                    Web.Scotty.json (u :: User)
+          put "/users/:login" $ do
+              login <- param "login"
+              u <- jsonData
+              successOrFailure <- liftIO $ createOrUpdateUser pool login u
+              case successOrFailure of
+                Left err -> do
+                    status badRequest400
+                    Web.Scotty.json $ object ["error" .= err]
                 Right u -> do
                     status created201
                     Web.Scotty.json (u :: User)
@@ -73,8 +92,12 @@ main = do
               login <- param "login"
               mayBeUser <- liftIO $ findUserByLogin pool login
               case mayBeUser of
-                Nothing -> 
+                Nothing ->
                   status notFound404
                 Just user -> do
                   status ok200
                   Web.Scotty.json (user :: User)
+          delete "/users/:login" $ do
+              login <- param "login"
+              mayBeUser <- liftIO $ deleteUser pool login
+              status noContent204

@@ -3,6 +3,7 @@
 module Users where
 
 import Db
+
 import Data.UUID
 import Data.Text.Lazy
 import Data.Text.Lazy.Encoding
@@ -10,22 +11,14 @@ import Data.Aeson
 import Data.UUID.Aeson
 import Control.Applicative
 
-import Web.Scotty.Internal.Types (ActionT)
-import GHC.Generics (Generic)
-import Control.Monad.IO.Class
-import Database.PostgreSQL.Simple.FromField
-import Database.PostgreSQL.Simple.FromRow
 import Database.PostgreSQL.Simple
-import Data.Pool(Pool, createPool, withResource)
-import Data.Time (LocalTime)
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Encoding as TL
-import qualified Data.ByteString.Lazy.Char8 as BL
-import qualified Data.Text as T
-import GHC.Int
+import Data.Pool(Pool)
 
-data User = User UUID Text Text -- id title bodyText
-     deriving (Show)
+data User = User {
+      id:: UUID,
+      login:: Text,
+      password:: Text -- id title bodyText
+} deriving (Show)
 
 instance FromJSON User where
      parseJSON (Object v) = User <$>
@@ -40,14 +33,21 @@ instance ToJSON User where
 
 findUserByLogin :: Pool Connection -> Text -> IO (Maybe User)
 findUserByLogin pool login = do
-        res <- fetch pool (Only login) "SELECT id, login, password FROM \"user\" WHERE login = ?" :: IO [(UUID, TL.Text, TL.Text)]
+        res <- fetch pool (Only login) "SELECT id, login, password FROM \"user\" WHERE login = ?" :: IO [(UUID, Text, Text)]
+        return $ user res
+        where user [(id, login, password)] = Just (User id login password)
+              user _ = Nothing
+
+findUserById :: Pool Connection -> UUID -> IO (Maybe User)
+findUserById pool id = do
+        res <- fetch pool (Only id) "SELECT id, login, password FROM \"user\" WHERE id = ?" :: IO [(UUID, Text, Text)]
         return $ user res
         where user [(id, login, password)] = Just (User id login password)
               user _ = Nothing
 
 findAllUsers :: Pool Connection -> IO [User]
 findAllUsers pool = do
-        res <- fetchSimple pool "SELECT id, login, password FROM \"user\" ORDER BY id DESC" :: IO [(UUID, TL.Text, TL.Text)]
+        res <- fetchSimple pool "SELECT id, login, password FROM \"user\" ORDER BY id DESC" :: IO [(UUID, Text, Text)]
         return $ Prelude.map (\(id, login, password) -> User id login password) res
 
 createUser :: Pool Connection -> User -> IO (Either Text User)
@@ -57,9 +57,28 @@ createUser pool (User _ login password) = do
         Nothing -> create pool (User Data.UUID.nil login password)
         Just u -> return $ Left "User already exists"
 
+createOrUpdateUser :: Pool Connection -> Text -> User -> IO (Either Text User)
+createOrUpdateUser pool userLogin (User _ login password) = do
+      mayBeUser <- findUserByLogin pool userLogin
+      case mayBeUser of
+        Nothing -> create pool (User Data.UUID.nil userLogin password)
+        Just u -> update pool (User Data.UUID.nil userLogin password)
+
 create :: Pool Connection -> User -> IO (Either Text User)
 create pool (User _ login password) = do
     uuid <- fetch pool [login, password] "INSERT INTO \"user\" (login, password) VALUES (?,?) RETURNING id " :: IO [Only UUID]
     return $ user uuid
     where user [Only id] = Right $ User id login password
           user _ = Left "Error"
+
+update :: Pool Connection -> User -> IO (Either Text User)
+update pool (User _ login password) = do
+    uuid <- fetch pool [login, password, login] "UPDATE \"user\" SET login=?, password=? where login = ? RETURNING id " :: IO [Only UUID]
+    return $ user uuid
+    where user [Only id] = Right $ User id login password
+          user _ = Left "Error"
+
+deleteUser :: Pool Connection -> Text -> IO ()
+deleteUser pool login = do
+    _ <- execSql pool [login] "DELETE FROM \"user\" where login = ? "
+    return ()
