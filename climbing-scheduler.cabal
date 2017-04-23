@@ -29,6 +29,10 @@ executable hblog
                      , uuid-aeson
                      , HTTP
                      , http-types
+                     , cookie
+                     , Crypto
+                     , base64-bytestring
+                     , blaze-builder
                      , transformers
                      , wai
                      , wai-middleware-static

@@ -4,7 +4,9 @@ module Main where
 
 import Db
 import Users
-import Login
+import Session
+import Http
+
 import Web.Scotty
 import Web.Scotty.Internal.Types (ActionT)
 import Network.Wai
@@ -23,6 +25,11 @@ import Data.Aeson
 import Database.PostgreSQL.Simple
 
 
+data AppConfig = AppConfig {
+  secret:: String,
+  dbConfig:: Db.DbConfig
+}
+
 makeDbConfig :: C.Config -> IO (Maybe Db.DbConfig)
 makeDbConfig conf = do
   name <- C.lookup conf "database.name" :: IO (Maybe String)
@@ -37,6 +44,15 @@ makeDbConfig conf = do
                     <*> user
                     <*> password
 
+loadSecret::  C.Config -> IO (Maybe String)
+loadSecret conf = C.lookup conf "secret" :: IO (Maybe String)
+
+loadConfig :: C.Config -> IO (Maybe AppConfig)
+loadConfig conf = do
+  dbConfig <- makeDbConfig conf
+  secret <- loadSecret conf
+  return $ AppConfig <$> secret <*> dbConfig
+
 test:: Middleware
 test m = m
 
@@ -46,11 +62,11 @@ auth app req respond = app req respond
 main:: IO ()
 main = do
   loadedConf <- C.load [C.Required "src/application.conf"]
-  dbConf <- makeDbConfig loadedConf
-  case dbConf of
-    Nothing -> putStrLn "No database configuration found, terminating..."
-    Just conf -> do
-        pool <- createPool (newConn conf) close 1 40 10
+  conf <- loadConfig loadedConf
+  case conf of
+    Nothing -> putStrLn "Error getting config, terminating ..."
+    Just (AppConfig secret dbConf) -> do
+        pool <- createPool (newConn dbConf) close 1 40 10
         scotty 3000 $ do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
           middleware $ auth
@@ -58,10 +74,11 @@ main = do
           post "/login" $ do
             loginForm <- jsonData
             session <- liftIO $ doLogin pool loginForm
-            case session of 
-              Unauthorized ->
+            case session of
+              Nothing ->
                 status unauthorized401
-              UserSession l ->
+              Just usession -> do
+                setCookie "session" (sessionCookie secret usession)
                 status ok200
           get "/users" $ do
               users <- liftIO $ findAllUsers pool
