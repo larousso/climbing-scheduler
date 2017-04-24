@@ -61,7 +61,7 @@ auth app req respond = app req respond
 
 main:: IO ()
 main = do
-  loadedConf <- C.load [C.Required "src/application.conf"]
+  loadedConf <- C.load [C.Required "conf/application.conf"]
   conf <- loadConfig loadedConf
   case conf of
     Nothing -> putStrLn "Error getting config, terminating ..."
@@ -80,6 +80,15 @@ main = do
               Just usession -> do
                 setCookie "session" (sessionCookie secret usession)
                 status ok200
+          get "/me" $ do
+            s <- readSession secret
+            case s of
+              Left err -> do
+                status unauthorized401
+                Web.Scotty.json $ object ["error" .= err]
+              Right s -> do
+                status ok200
+                Web.Scotty.json s
           get "/users" $ do
               users <- liftIO $ findAllUsers pool
               status ok200

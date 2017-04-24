@@ -20,3 +20,9 @@ renderSetCookie' = T.decodeUtf8 . B.toLazyByteString . renderSetCookie
 
 setCookie :: BS.ByteString -> BS.ByteString -> ActionM ()
 setCookie n v = setHeader "Set-Cookie" (renderSetCookie' (makeCookie n v))
+
+getCookies :: ActionM (Maybe CookiesText)
+getCookies =
+    fmap (fmap (parseCookiesText . lazyToStrict . T.encodeUtf8)) $ header "Cookie"
+    where
+        lazyToStrict = BS.concat . BSL.toChunks
