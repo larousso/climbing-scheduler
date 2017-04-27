@@ -4,6 +4,7 @@ module Main where
 
 import Db
 import Users
+import Slots
 import Session
 import Http
 
@@ -16,10 +17,15 @@ import Network.Wai.Middleware.HttpAuth
 import Network.HTTP.Types.Status (created201, internalServerError500, notFound404, ok200, badRequest400, noContent204, unauthorized401)
 import Control.Applicative
 import Control.Monad.IO.Class
+import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.Trans.Either
+
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Data.Pool(Pool, createPool, withResource)
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text as T
 import Data.Word
 import Data.Aeson
 import Database.PostgreSQL.Simple
@@ -53,11 +59,32 @@ loadConfig conf = do
   secret <- loadSecret conf
   return $ AppConfig <$> secret <*> dbConfig
 
-test:: Middleware
-test m = m
-
 auth :: Application -> Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
-auth app req respond = app req respond
+auth app = app
+
+jsonUnauthorized:: String -> ActionM ()
+jsonUnauthorized err = do
+  status unauthorized401
+  Web.Scotty.json $ object ["error" .= err]
+
+badRequest:: String -> ActionM ()
+badRequest err = do
+  status badRequest400
+  Web.Scotty.json $ object ["error" .= err]
+
+
+checkAuth :: String -> TL.Text -> (UserSession -> ActionM ()) -> ActionM ()
+checkAuth secret login action = do
+   s <- readSession secret
+   case s of
+     Left err -> jsonUnauthorized err
+     Right (UserSession l UserRole) ->
+        if login == l
+        then action (UserSession l UserRole)
+        else jsonUnauthorized "Not authorized"
+     Right (UserSession l Admin) ->
+        action (UserSession l UserRole)
+
 
 main:: IO ()
 main = do
@@ -69,7 +96,7 @@ main = do
         pool <- createPool (newConn dbConf) close 1 40 10
         scotty 3000 $ do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
-          middleware $ auth
+          middleware auth
 
           post "/login" $ do
             loginForm <- jsonData
@@ -105,25 +132,57 @@ main = do
                     Web.Scotty.json (u :: User)
           put "/users/:login" $ do
               login <- param "login"
-              u <- jsonData
-              successOrFailure <- liftIO $ createOrUpdateUser pool login u
-              case successOrFailure of
-                Left err -> do
-                    status badRequest400
-                    Web.Scotty.json $ object ["error" .= err]
-                Right u -> do
-                    status created201
-                    Web.Scotty.json (u :: User)
+              checkUserAuth login $ \s -> do
+                u <- jsonData
+                successOrFailure <- liftIO $ createOrUpdateUser pool login u
+                case successOrFailure of
+                  Left err -> do
+                      status badRequest400
+                      Web.Scotty.json $ object ["error" .= err]
+                  Right u -> do
+                      status created201
+                      Web.Scotty.json (u :: User)
+
           get "/users/:login" $ do
               login <- param "login"
-              mayBeUser <- liftIO $ findUserByLogin pool login
-              case mayBeUser of
-                Nothing ->
-                  status notFound404
-                Just user -> do
-                  status ok200
-                  Web.Scotty.json (user :: User)
+              checkUserAuth login $ \s -> do
+                mayBeUser <- liftIO $ findUserByLogin pool login
+                case mayBeUser of
+                  Nothing ->
+                    status notFound404
+                  Just user -> do
+                    status ok200
+                    Web.Scotty.json (user :: User)
+
           delete "/users/:login" $ do
               login <- param "login"
-              mayBeUser <- liftIO $ deleteUser pool login
-              status noContent204
+              checkUserAuth login $ \s -> do
+                mayBeUser <- liftIO $ deleteUser pool login
+                status noContent204
+
+          get "/users/:login/slots" $ do
+              login <- param "login"
+              checkUserAuth login $ \s -> do
+                slots <- liftIO $ findSlotsByUserLogin pool login
+                status ok200
+                Web.Scotty.json (slots :: [Slot])
+
+          post "/users/:login/slots" $ do
+              login <- param "login"
+              checkUserAuth login $ \s -> do
+                s <- jsonData
+                mayBeUser <- liftIO $ findUserByLogin pool login
+                case mayBeUser of
+                  Nothing ->
+                    badRequest "User not found"
+                  Just (User id _ _) -> do
+                    successOrFailure <- liftIO $ createSlot pool (updateSlot id s)
+                    case successOrFailure of
+                      Left err ->
+                          badRequest $ TL.unpack err
+                      Right u -> do
+                          status created201
+                          Web.Scotty.json (u :: Slot)
+
+          where checkUserAuth = checkAuth secret
+                updateSlot uid s = s {userId = uid}

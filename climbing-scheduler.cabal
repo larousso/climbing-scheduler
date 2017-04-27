@@ -19,6 +19,8 @@ executable hblog
   -- other-modules:
   -- other-extensions:
   build-depends:       base
+                     , mtl
+                     , either
                      , time
                      , uuid
                      , scotty

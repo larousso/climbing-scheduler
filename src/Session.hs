@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Session where
 
@@ -28,6 +29,8 @@ import Web.Cookie
 import qualified Data.List as LST
 import qualified Data.Text as T
 import qualified Data.Text.Internal as IT
+import qualified Data.Text.Lazy.IO as T
+import qualified Data.Text.Lazy.Encoding as T
 import GHC.Word (Word8)
 
 data LoginForm = LoginForm { login:: Text, password:: Text } deriving (Show)
@@ -38,19 +41,31 @@ instance FromJSON LoginForm where
                             v .:  "password"
 
 instance ToJSON LoginForm where
-     toJSON (LoginForm login password) =
+     toJSON LoginForm{..} =
          object ["login" .= login,
                  "password" .= password]
 
-newtype UserSession  = UserSession {userLogin:: Text}
+data Role = UserRole | Admin
+
+instance FromJSON Role where
+     parseJSON = withText "Role" $ \t ->
+        return $ case t of
+          "Admin" -> Admin
+          "UserRole" -> UserRole
+
+instance ToJSON Role where
+     toJSON Admin = "Admin"
+     toJSON UserRole = "UserRole"
+
+
+data UserSession  = UserSession { userLogin:: Text, role:: Role }
 
 instance FromJSON UserSession where
-     parseJSON (Object v) = UserSession <$>
-                            v .:  "userLogin"
+     parseJSON = withObject "UserSession" $ \v ->
+        UserSession <$> v .:  "userLogin" <*> v .:  "role"
 
 instance ToJSON UserSession where
-     toJSON (UserSession userLogin) =
-         object ["userLogin" .= userLogin]
+     toJSON UserSession{..} = object ["userLogin" .= userLogin, "role" .= role]
 
 
 sessionCookie:: String -> UserSession -> BS.ByteString
@@ -105,5 +120,5 @@ doLogin :: Pool Connection -> LoginForm -> IO (Maybe UserSession)
 doLogin pool (LoginForm l p) = do
   mayBeUser <- findUserByLogin pool l
   return $ toSession p mayBeUser
-  where toSession pass (Just (User _ l p)) = if pass == p then Just UserSession{userLogin=l} else Nothing
+  where toSession pass (Just (User id l p)) = if pass == p then Just UserSession{userLogin=l, role= UserRole} else Nothing
         toSession pass Nothing = Nothing
