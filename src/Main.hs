@@ -102,43 +102,40 @@ main = do
             loginForm <- jsonData
             session <- liftIO $ doLogin pool loginForm
             case session of
-              Nothing ->
-                status unauthorized401
+              Nothing -> status unauthorized401
               Just usession -> do
                 setCookie "session" (sessionCookie secret usession)
                 status ok200
+                
           get "/me" $ do
             s <- readSession secret
             case s of
-              Left err -> do
-                status unauthorized401
-                Web.Scotty.json $ object ["error" .= err]
+              Left err -> jsonUnauthorized err
               Right s -> do
                 status ok200
                 Web.Scotty.json s
+
           get "/users" $ do
               users <- liftIO $ findAllUsers pool
               status ok200
               Web.Scotty.json (users :: [User])
+
           post "/users" $ do
               u <- jsonData
               successOrFailure <- liftIO $ createUser pool u
               case successOrFailure of
-                Left err -> do
-                    status badRequest400
-                    Web.Scotty.json $ object ["error" .= err]
+                Left err -> badRequest $ TL.unpack err
                 Right u -> do
                     status created201
                     Web.Scotty.json (u :: User)
+
           put "/users/:login" $ do
               login <- param "login"
               checkUserAuth login $ \s -> do
                 u <- jsonData
                 successOrFailure <- liftIO $ createOrUpdateUser pool login u
                 case successOrFailure of
-                  Left err -> do
-                      status badRequest400
-                      Web.Scotty.json $ object ["error" .= err]
+                  Left err -> badRequest $ TL.unpack err
                   Right u -> do
                       status created201
                       Web.Scotty.json (u :: User)
@@ -148,8 +145,7 @@ main = do
               checkUserAuth login $ \s -> do
                 mayBeUser <- liftIO $ findUserByLogin pool login
                 case mayBeUser of
-                  Nothing ->
-                    status notFound404
+                  Nothing -> status notFound404
                   Just user -> do
                     status ok200
                     Web.Scotty.json (user :: User)
@@ -173,13 +169,11 @@ main = do
                 s <- jsonData
                 mayBeUser <- liftIO $ findUserByLogin pool login
                 case mayBeUser of
-                  Nothing ->
-                    badRequest "User not found"
+                  Nothing -> badRequest "User not found"
                   Just (User id _ _) -> do
                     successOrFailure <- liftIO $ createSlot pool (updateSlot id s)
                     case successOrFailure of
-                      Left err ->
-                          badRequest $ TL.unpack err
+                      Left err -> badRequest $ TL.unpack err
                       Right u -> do
                           status created201
                           Web.Scotty.json (u :: Slot)
