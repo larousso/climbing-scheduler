@@ -136,6 +136,24 @@ slot:: UUID -> UUID -> Bool -> Day -> Hours -> Minutes -> Hours -> Minutes -> Sl
 slot id userId acceptMultipe day startHours startMinutes endHours endMinutes =
   Slot id userId acceptMultipe day (SlotTime startHours startMinutes (calcValue startHours startMinutes)) (SlotTime endHours endMinutes (calcValue endHours endMinutes))
 
+slotScripts:: [Query]
+slotScripts = [
+  " CREATE TABLE IF NOT EXISTS \"slot\" ( \
+    \  id uuid primary key DEFAULT uuid_generate_v4(), \
+    \  user_id uuid references \"user\"(id), \
+    \  accept_multiple bool not null, \
+    \  day text not null, \
+    \  slot_start_hours int not null, \
+    \  slot_start_minutes int not null, \
+    \  slot_start_value int not null, \
+    \  slot_end_hours int not null, \
+    \  slot_end_minutes int not null, \
+    \  slot_end_value int not null, \
+    \  CONSTRAINT valid_times CHECK (slot_end_value > slot_start_value), \
+    \  UNIQUE (user_id, day, slot_start_value, slot_end_value) \
+    \); "
+  ]
+  
 createTableSlot:: Pool Connection -> IO ()
 createTableSlot pool = do
   _ <- execSqlSimple pool script

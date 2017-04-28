@@ -10,8 +10,8 @@ import Data.Text.Lazy.Encoding
 import Data.Aeson
 import Data.UUID.Aeson
 import Control.Applicative
-
 import Database.PostgreSQL.Simple
+
 import Data.Pool(Pool)
 import GHC.Int
 
@@ -31,6 +31,19 @@ instance ToJSON User where
      toJSON (User id surname password) =
          object ["id" .= id,
                  "login" .= surname]
+
+userScripts:: [Query]
+userScripts = [
+  "CREATE TABLE IF NOT EXISTS \"user\" ( \
+  \  id uuid primary key DEFAULT uuid_generate_v4(), \
+  \  login text not null unique, \
+  \  name text, \
+  \  surname text, \
+  \  level text, \
+  \  password text not null, \
+  \  timestamp timestamp DEFAULT current_timestamp ); ",
+  "CREATE UNIQUE INDEX IF NOT EXISTS \"user_login\" ON \"user\"(login) ;"
+  ]
 
 createTableUser:: Pool Connection -> IO()
 createTableUser pool = do

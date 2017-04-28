@@ -88,11 +88,12 @@ checkAuth secret login action = do
 
 initDb:: Pool Connection -> IO ()
 initDb pool = do
-  _ <- execSqlSimple pool "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-  _ <- createTableUser pool
-  _ <- createTableSlot pool
+  _ <- traverse (execSqlSimple pool) (
+        ["CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"] ++
+        userScripts ++
+        slotScripts
+      )
   return ()
-
 
 main:: IO ()
 main = do
