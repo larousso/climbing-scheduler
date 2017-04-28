@@ -82,7 +82,10 @@ readSession:: String -> ActionM (Either String UserSession)
 readSession secret = do
   cookies <- getCookies
   case cookies >>= findSessionCookie of
-    Just (k, v) -> return $ readCookie secret v
+    Just (k, v) ->
+      if v == ""
+      then return $ Left "No session"
+      else return $ readCookie secret v
     Nothing -> return $ Left "No session"
   where findSessionCookie = LST.find (\(k, v) -> k == "session")
 

@@ -56,6 +56,10 @@ execSql :: ToRow q => Pool Connection -> q -> Query -> IO Int64
 execSql pool args sql = withResource pool ins
       where ins conn = execute conn sql args
 
+execSqlSimple :: Pool Connection -> Query -> IO Int64
+execSqlSimple pool sql = withResource pool ins
+      where ins conn = execute_ conn sql
+
 -------------------------------------------------------------------------------
 -- Utilities for interacting with the DB.
 -- Transactions.

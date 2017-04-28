@@ -13,6 +13,7 @@ import Control.Applicative
 
 import Database.PostgreSQL.Simple
 import Data.Pool(Pool)
+import GHC.Int
 
 data User = User {
       id:: UUID,
@@ -31,18 +32,38 @@ instance ToJSON User where
          object ["id" .= id,
                  "login" .= surname]
 
+createTableUser:: Pool Connection -> IO()
+createTableUser pool = do
+  _ <- execSqlSimple pool script
+  _ <- execSqlSimple pool createIndex
+  return ()
+  where
+    createIndex = "CREATE UNIQUE INDEX IF NOT EXISTS \"user_login\" ON \"user\"(login) ;"
+    script = "CREATE TABLE IF NOT EXISTS \"user\" ( \
+    \  id uuid primary key DEFAULT uuid_generate_v4(), \
+    \  login text not null unique, \
+    \  name text, \
+    \  surname text, \
+    \  level text, \
+    \  password text not null, \
+    \  timestamp timestamp DEFAULT current_timestamp \
+    \);"
+
+rowToUser:: (UUID, Text, Text) -> Maybe User
+rowToUser (id, login, password) = Just (User id login password)
+
 findUserByLogin :: Pool Connection -> Text -> IO (Maybe User)
 findUserByLogin pool login = do
         res <- fetch pool (Only login) "SELECT id, login, password FROM \"user\" WHERE login = ?" :: IO [(UUID, Text, Text)]
         return $ user res
-        where user [(id, login, password)] = Just (User id login password)
+        where user [a] = rowToUser a
               user _ = Nothing
 
 findUserById :: Pool Connection -> UUID -> IO (Maybe User)
 findUserById pool id = do
         res <- fetch pool (Only id) "SELECT id, login, password FROM \"user\" WHERE id = ?" :: IO [(UUID, Text, Text)]
         return $ user res
-        where user [(id, login, password)] = Just (User id login password)
+        where user [a] = rowToUser a
               user _ = Nothing
 
 findAllUsers :: Pool Connection -> IO [User]
@@ -80,5 +101,5 @@ update pool (User _ login password) = do
 
 deleteUser :: Pool Connection -> Text -> IO ()
 deleteUser pool login = do
-    _ <- execSql pool [login] "DELETE FROM \"user\" where login = ? "
+    _ <- execSql pool (Only login) "DELETE FROM \"user\" where login = ? "
     return ()

@@ -26,6 +26,7 @@ import qualified Data.Configurator.Types as C
 import Data.Pool(Pool, createPool, withResource)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text as T
+import qualified Data.UUID as UUID
 import Data.Word
 import Data.Aeson
 import Database.PostgreSQL.Simple
@@ -85,6 +86,13 @@ checkAuth secret login action = do
      Right (UserSession l Admin) ->
         action (UserSession l UserRole)
 
+initDb:: Pool Connection -> IO ()
+initDb pool = do
+  _ <- execSqlSimple pool "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+  _ <- createTableUser pool
+  _ <- createTableSlot pool
+  return ()
+
 
 main:: IO ()
 main = do
@@ -94,6 +102,7 @@ main = do
     Nothing -> putStrLn "Error getting config, terminating ..."
     Just (AppConfig secret dbConf) -> do
         pool <- createPool (newConn dbConf) close 1 40 10
+        _ <- initDb pool
         scotty 3000 $ do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
           middleware auth
@@ -106,7 +115,11 @@ main = do
               Just usession -> do
                 setCookie "session" (sessionCookie secret usession)
                 status ok200
-                
+
+          post "/logout" $ do
+              setCookie "session" ""
+              status ok200
+
           get "/me" $ do
             s <- readSession secret
             case s of
@@ -177,6 +190,26 @@ main = do
                       Right u -> do
                           status created201
                           Web.Scotty.json (u :: Slot)
+          delete "/users/:login/slots/:id" $ do
+            login <- param "login"
+            checkUserAuth login $ \s -> do
+              id <- param "id"
+              case UUID.fromString id of
+                Just uuid -> do
+                  _ <- liftIO $ deleteSlot pool uuid
+                  status noContent204
+                Nothing -> badRequest "Error decoding slot id"
+
+          get "/users/:login/slots/:id/_search" $ do
+            login <- param "login"
+            checkUserAuth login $ \s -> do
+              id <- param "id"
+              case UUID.fromString id of
+                Just uuid -> do
+                  slots <- liftIO $ searchSimilarSlot pool uuid
+                  status ok200
+                  Web.Scotty.json (slots :: [Slot])
+                Nothing -> badRequest "Error decoding slot id"
 
           where checkUserAuth = checkAuth secret
                 updateSlot uid s = s {userId = uid}
