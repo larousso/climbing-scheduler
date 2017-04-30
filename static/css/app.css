@@ -1,0 +1,12 @@
+
+.box-container {
+  border: 2px solid black;
+  display: flex;
+}
+
+.box {
+  background-color: red;
+  text-align: center;
+  flex: 1;
+  margin: 1px;
+}
