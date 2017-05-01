@@ -118,7 +118,7 @@ searchSimilarSlot pool userId = do
   \  s.id = ? AND  \
   \  ss.id != s.id AND  \
   \  s.user_id != ss.user_id AND  \
-  \  s.accept_multiple = ss.accept_multiple AND  \
   \  GREATEST(  extract(epoch from s.slot_start), extract(epoch from ss.slot_start)) < LEAST(extract(epoch from s.slot_end), extract(epoch from ss.slot_end)) \
-  \ ORDER BY (LEAST(extract(epoch from s.slot_end), extract(epoch from ss.slot_end)) - GREATEST(extract(epoch from s.slot_start), extract(epoch from ss.slot_start))) DESC\
+  \ ORDER BY \
+  \  (LEAST(extract(epoch from s.slot_end), extract(epoch from ss.slot_end)) - GREATEST(extract(epoch from s.slot_start), extract(epoch from ss.slot_start))) DESC \ 
   \";
