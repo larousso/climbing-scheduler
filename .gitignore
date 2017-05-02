@@ -2,3 +2,5 @@
 dist
 out
 climbing-scheduler.iml
+static/node_modules
+static/bower_components

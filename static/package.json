@@ -1,0 +1,24 @@
+{
+  "name": "climbing-scheduler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/larousso/climbing-scheduler",
+  "author": "Alexandre Delègue",
+  "license": "MIT",
+  "scripts": {
+    "start": "NODE_ENV=dev webpack-dev-server -d --colors --inline --port 3040"
+  },
+  "dependencies": {
+    "react": "^15.5.4",
+    "react-dom": "^15.5.4"
+  },
+  "devDependencies": {
+    "purescript": "^0.11.0",
+    "purescript-psa": "^0.5.0",
+    "purescript": "^0.11.4",
+    "purs-loader": "^3.0.0",
+    "webpack": "^2.0.0",
+    "webpack-dev-server": "^2.0.0",
+    "wrappy": "^1.0.2"
+  }
+}
