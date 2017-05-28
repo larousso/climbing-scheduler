@@ -1,0 +1,22 @@
+{
+  "name": "climbing-scheduler",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "adelegue",
+  "license": "MIT",
+  "scripts": {
+    "bundle": "NODE_ENV=production webpack --colors --progress",
+    "build": "rm -f ../public/javascripts/bundle/* && npm run bundle",
+    "start": "cross-env NODE_ENV=dev webpack-dev-server -d --colors --inline --port 3040"
+  },
+  "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^7.0.0",
+    "babel-preset-env": "^1.5.1",
+    "cross-env": "^5.0.0",
+    "elm": "^0.18.0",
+    "elm-webpack-loader": "^4.3.1",
+    "webpack": "^2.6.1",
+    "webpack-dev-server": "^2.4.5"
+  }
+}

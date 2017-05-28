@@ -4,3 +4,5 @@ out
 climbing-scheduler.iml
 static/node_modules
 static/bower_components
+javascript/elm-stuff
+javascript/node_modules
