@@ -2,7 +2,10 @@ module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
+import Http
+import Json.Encode as Encode
+import Json.Decode as Decode exposing (field)
 
 
 type Mode
@@ -10,17 +13,30 @@ type Mode
     | CreateAccount
 
 
+type alias Account =
+    { login : String, password : String }
+
+
 type alias Model =
-    { mode : Mode }
+    { mode : Mode, account : Account }
+
+
+type alias User =
+    { id : String, login : String }
 
 
 type Msg
     = SetMode Mode
+    | SetLogin String
+    | SetPassword String
+    | SendCreateAccount
+    | SendLogin
+    | CreateAccountResponse (Result Http.Error User)
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model Login, Cmd.none )
+    ( Model Login (Account "" ""), Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -28,6 +44,38 @@ update msg model =
     case msg of
         SetMode mode ->
             ( { model | mode = mode }, Cmd.none )
+
+        SetLogin login ->
+            let
+                oldAccount =
+                    model.account
+
+                newAccount =
+                    { oldAccount | login = login }
+            in
+                ( { model | account = newAccount }, Cmd.none )
+
+        SetPassword password ->
+            let
+                oldAccount =
+                    model.account
+
+                newAccount =
+                    { oldAccount | password = password }
+            in
+                ( { model | account = newAccount }, Cmd.none )
+
+        SendCreateAccount ->
+            ( model, createAccount model.account )
+
+        SendLogin ->
+            ( model, Cmd.none )
+
+        CreateAccountResponse (Ok _) ->
+            ( model, Cmd.none )
+
+        CreateAccountResponse (Err _) ->
+            ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -48,18 +96,49 @@ liClass mode liName =
             classList []
 
 
-mainContent : Mode -> Html Msg
-mainContent mode =
-    case mode of
+createAccount : Account -> Cmd Msg
+createAccount account =
+    let
+        url =
+            "/api/users"
+
+        request =
+            Http.post url (jsonAccount account |> Http.jsonBody) userDecoder
+    in
+        Http.send CreateAccountResponse request
+
+
+jsonAccount : Account -> Encode.Value
+jsonAccount account =
+    let
+        list =
+            [ ( "login", Encode.string account.login )
+            , ( "password", Encode.string account.password )
+            ]
+    in
+        list
+            |> Encode.object
+
+
+userDecoder : Decode.Decoder User
+userDecoder =
+    Decode.map2 User
+        (field "id" Decode.string)
+        (field "login" Decode.string)
+
+
+mainContent : Model -> Html Msg
+mainContent model =
+    case model.mode of
         Login ->
             div [ class "tab-content" ]
                 [ div [ class "form-item" ]
                     [ label [] [ text "Login" ]
-                    , input [ type_ "text", placeholder "login" ] []
+                    , input [ type_ "text", placeholder "login", value model.account.login, onInput SetLogin ] []
                     ]
                 , div [ class "form-item" ]
                     [ label [] [ text "password" ]
-                    , input [ type_ "password", placeholder "password" ] []
+                    , input [ type_ "password", placeholder "password", value model.account.password, onInput SetPassword ] []
                     ]
                 , button [ class "btn", type_ "button" ] [ text "Se connecter" ]
                 ]
@@ -68,13 +147,13 @@ mainContent mode =
             div [ class "tab-content" ]
                 [ div [ class "form-item" ]
                     [ label [] [ text "Login" ]
-                    , input [ type_ "text", placeholder "login" ] []
+                    , input [ type_ "text", placeholder "login", value model.account.login, onInput SetLogin ] []
                     ]
                 , div [ class "form-item" ]
                     [ label [] [ text "password" ]
-                    , input [ type_ "password", placeholder "password" ] []
+                    , input [ type_ "password", placeholder "password", value model.account.password, onInput SetPassword ] []
                     ]
-                , button [ class "btn", type_ "button" ] [ text "Créer son compte" ]
+                , button [ class "btn", type_ "button", onClick SendCreateAccount ] [ text "Créer son compte" ]
                 ]
 
 
@@ -110,7 +189,7 @@ view model =
                     [ li [ liClass model.mode "login" ] [ a [ href "#", onClick (SetMode Login) ] [ text "Se connecter" ] ]
                     , li [ liClass model.mode "createAccount" ] [ a [ href "#", onClick (SetMode CreateAccount) ] [ text "Créer un compte" ] ]
                     ]
-                , mainContent model.mode
+                , mainContent model
                 ]
             ]
         ]
