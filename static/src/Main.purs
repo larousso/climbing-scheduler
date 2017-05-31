@@ -14,7 +14,6 @@ import DOM.Node.NonElementParentNode (getElementById)
 import DOM.Node.Types (Element, ElementId(..), documentToNonElementParentNode)
 import Data.Int (decimal, toStringAs)
 import Data.Maybe (fromJust)
-import Data.Nullable (toMaybe)
 import Partial.Unsafe (unsafePartial)
 import React (ReactElement, ReactClass, createElement, createFactory, createClass, writeState, readState, spec, createClassStateless, getProps)
 import ReactDOM (render)
@@ -90,5 +89,5 @@ main = void (elm' >>= render ui)
   elm' = do
     win <- window
     doc <- document win
-    elm <- getElementById (ElementId "example") (documentToNonElementParentNode (htmlDocumentToDocument doc))
-    pure $ unsafePartial fromJust (toMaybe elm)
+    elm <- getElementById (ElementId "app") (documentToNonElementParentNode (htmlDocumentToDocument doc))
+    pure $ unsafePartial fromJust elm

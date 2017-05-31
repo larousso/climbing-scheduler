@@ -3,7 +3,7 @@ const path = require('path');
 
 const webpack = require('webpack');
 
-const isWebpackDevServer = process.argv.filter(a => path.basename(a) === 'webpack-dev-server').length;
+const isWebpackDevServer = process.env.NODE_ENV == 'dev' || process.argv.filter(a => path.basename(a) === 'webpack-dev-server').length;
 
 const isWatch = process.argv.filter(a => a === '--watch').length
 
@@ -27,17 +27,25 @@ module.exports = {
   },
 
   entry: {
-    Home: './src/App.js'
+    Home: './src/home/index.js'
   },
 
   output: {
     path: __dirname,
+    publicPath: '/static/',
     pathinfo: true,
     filename: 'bundle.js'
   },
 
   module: {
     rules: [
+      {
+        test: /\.js$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader'
+        }
+      },
       {
         test: /\.purs$/,
         use: [
@@ -65,6 +73,7 @@ module.exports = {
   },
 
   plugins: [
+    new webpack.HotModuleReplacementPlugin(),
     new webpack.LoaderOptionsPlugin({
       debug: true
     })

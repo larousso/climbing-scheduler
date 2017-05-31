@@ -108,7 +108,22 @@ main = do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
           middleware auth
 
-          post "/login" $ do
+          get "/" $ do
+            html $ mconcat [ " <!doctype> \
+                              \ <html> \
+                              \ <head> \
+                              \ <title>purescript-webpack-example</title> \
+                              \ <meta name=\"viewport\" content=\"width=device-width\">\
+                              \ <link rel=\"stylesheet\" href=\"/css/app.css\" >\
+                              \ <link href=\"https://fonts.googleapis.com/css?family=Anton|Gloria+Hallelujah|Raleway\" rel=\"stylesheet\">\
+                              \ </head> \
+                              \ <body> \
+                              \   <div id=\"app\"></div> \
+                              \   <script src=\"http://localhost:3040/static/home.js\"></script> \
+                              \ </body>\
+                              \ </html> "]
+
+          post "/api/login" $ do
             loginForm <- jsonData
             session <- liftIO $ doLogin pool loginForm
             case session of
@@ -117,11 +132,11 @@ main = do
                 setCookie "session" (sessionCookie secret usession)
                 status ok200
 
-          post "/logout" $ do
+          post "/api/logout" $ do
               setCookie "session" ""
               status ok200
 
-          get "/me" $ do
+          get "/api/me" $ do
             s <- readSession secret
             case s of
               Left err -> jsonUnauthorized err
@@ -129,12 +144,12 @@ main = do
                 status ok200
                 Web.Scotty.json s
 
-          get "/users" $ do
+          get "/api/users" $ do
               users <- liftIO $ findAllUsers pool
               status ok200
               Web.Scotty.json (users :: [User])
 
-          post "/users" $ do
+          post "/api/users" $ do
               u <- jsonData
               successOrFailure <- liftIO $ createUser pool u
               case successOrFailure of
@@ -143,7 +158,7 @@ main = do
                     status created201
                     Web.Scotty.json (u :: User)
 
-          put "/users/:login" $ do
+          put "/api/users/:login" $ do
               login <- param "login"
               checkUserAuth login $ \s -> do
                 u <- jsonData
@@ -164,20 +179,20 @@ main = do
                     status ok200
                     Web.Scotty.json (user :: User)
 
-          delete "/users/:login" $ do
+          delete "/api/users/:login" $ do
               login <- param "login"
               checkUserAuth login $ \s -> do
                 mayBeUser <- liftIO $ deleteUser pool login
                 status noContent204
 
-          get "/users/:login/slots" $ do
+          get "/api/users/:login/slots" $ do
               login <- param "login"
               checkUserAuth login $ \s -> do
                 slots <- liftIO $ findSlotsByUserLogin pool login
                 status ok200
                 Web.Scotty.json (slots :: [Slot])
 
-          post "/users/:login/slots" $ do
+          post "/api/users/:login/slots" $ do
               login <- param "login"
               checkUserAuth login $ \s -> do
                 s <- jsonData
@@ -191,7 +206,7 @@ main = do
                       Right u -> do
                           status created201
                           Web.Scotty.json (u :: Slot)
-          delete "/users/:login/slots/:id" $ do
+          delete "/api/users/:login/slots/:id" $ do
             login <- param "login"
             checkUserAuth login $ \s -> do
               id <- param "id"
@@ -201,7 +216,7 @@ main = do
                   status noContent204
                 Nothing -> badRequest "Error decoding slot id"
 
-          get "/users/:login/slots/:id/_search" $ do
+          get "/api/users/:login/slots/:id/_search" $ do
             login <- param "login"
             checkUserAuth login $ \s -> do
               id <- param "id"

@@ -10,6 +10,15 @@
     "purescript-console": "^3.0.0",
     "purescript-eff": "^3.1.0",
     "purescript-react": "^3.0.0",
-    "purescript-react-dom": "^3.0.0"
+    "purescript-react-dom": "^3.0.0",
+    "purescript-aff": "^3.0.0",
+    "purescript-affjax": "^4.0.0",
+    "purescript-datetime": "^3.0.0",
+    "purescript-mini-redux": "^3.0.2",
+    "purescript-foreign-generic": "^4.1.0",
+    "purescript-transformers": "^3.2.0",
+    "purescript-foreign": "^4.0.0",
+    "purescript-argonaut-codecs": "^3.0.1",
+    "purescript-argonaut": "^3.0.0"
   }
 }
