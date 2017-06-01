@@ -131,6 +131,7 @@ main = do
               Just usession -> do
                 setCookie "session" (sessionCookie secret usession)
                 status ok200
+                Web.Scotty.json usession
 
           post "/api/logout" $ do
               setCookie "session" ""

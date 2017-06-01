@@ -3,9 +3,11 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
-import Http
+import Http as Http exposing (..)
 import Json.Encode as Encode
-import Json.Decode as Decode exposing (field)
+import Json.Decode as Decode exposing (field, decodeString)
+import Debug
+import Native.Navigation
 
 
 type Mode
@@ -18,11 +20,15 @@ type alias Account =
 
 
 type alias Model =
-    { mode : Mode, account : Account }
+    { mode : Mode, account : Account, error : Maybe String }
 
 
 type alias User =
     { id : String, login : String }
+
+
+type alias Session =
+    { userLogin : String, role : String }
 
 
 type Msg
@@ -32,11 +38,12 @@ type Msg
     | SendCreateAccount
     | SendLogin
     | CreateAccountResponse (Result Http.Error User)
+    | LoginResponse (Result Http.Error Session)
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model Login (Account "" ""), Cmd.none )
+    ( Model Login (Account "" "") Nothing, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -53,7 +60,7 @@ update msg model =
                 newAccount =
                     { oldAccount | login = login }
             in
-                ( { model | account = newAccount }, Cmd.none )
+                ( { model | account = newAccount, error = Nothing }, Cmd.none )
 
         SetPassword password ->
             let
@@ -63,19 +70,40 @@ update msg model =
                 newAccount =
                     { oldAccount | password = password }
             in
-                ( { model | account = newAccount }, Cmd.none )
+                ( { model | account = newAccount, error = Nothing }, Cmd.none )
 
         SendCreateAccount ->
             ( model, createAccount model.account )
 
         SendLogin ->
-            ( model, Cmd.none )
+            ( model, doLogin model.account )
 
         CreateAccountResponse (Ok _) ->
-            ( model, Cmd.none )
+            ( model, doLogin model.account )
+
+        CreateAccountResponse (Err (BadStatus response)) ->
+            let
+                errMess =
+                    decodeString errorDecoder response.body
+            in
+                case errMess of
+                    Ok msg ->
+                        ( { model | error = Just msg }, Cmd.none )
+
+                    Err _ ->
+                        ( { model | error = Just "Une erreur bizarre est survenue" }, Cmd.none )
 
         CreateAccountResponse (Err _) ->
-            ( model, Cmd.none )
+            ( { model | error = Just "Une erreur bizarre est survenue" }, Cmd.none )
+
+        LoginResponse (Ok session) ->
+            ( model, Native.Navigation.setLocation <| "/home/@" ++ session.userLogin )
+
+        LoginResponse (Err (BadStatus response)) ->
+            ( { model | error = Just "Une erreur bizarre est survenue" }, Cmd.none )
+
+        LoginResponse (Err _) ->
+            ( { model | error = Just "Une erreur bizarre est survenue" }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -94,6 +122,18 @@ liClass mode liName =
 
         ( _, _ ) ->
             classList []
+
+
+doLogin : Account -> Cmd Msg
+doLogin account =
+    let
+        url =
+            "/api/login"
+
+        request =
+            Http.post url (jsonAccount account |> Http.jsonBody) sessionDecoder
+    in
+        Http.send LoginResponse request
 
 
 createAccount : Account -> Cmd Msg
@@ -127,6 +167,18 @@ userDecoder =
         (field "login" Decode.string)
 
 
+sessionDecoder : Decode.Decoder Session
+sessionDecoder =
+    Decode.map2 Session
+        (field "userLogin" Decode.string)
+        (field "role" Decode.string)
+
+
+errorDecoder : Decode.Decoder String
+errorDecoder =
+    (field "error" Decode.string)
+
+
 mainContent : Model -> Html Msg
 mainContent model =
     case model.mode of
@@ -140,12 +192,13 @@ mainContent model =
                     [ label [] [ text "password" ]
                     , input [ type_ "password", placeholder "password", value model.account.password, onInput SetPassword ] []
                     ]
-                , button [ class "btn", type_ "button" ] [ text "Se connecter" ]
+                , button [ class "btn", type_ "button", onClick SendLogin ] [ text "Se connecter" ]
                 ]
 
         CreateAccount ->
             div [ class "tab-content" ]
-                [ div [ class "form-item" ]
+                [ div [ class "errorMessage" ] [ text (Maybe.withDefault "" model.error) ]
+                , div [ class "form-item" ]
                     [ label [] [ text "Login" ]
                     , input [ type_ "text", placeholder "login", value model.account.login, onInput SetLogin ] []
                     ]
