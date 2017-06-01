@@ -135,7 +135,7 @@ main = do
                               \ </head> \
                               \ <body> \
                               \   <div id=\"app\"></div> \
-                              \   <script> var _userLogin=", userLogin, ";</script> \
+                              \   <script> var _userLogin='", userLogin, "';</script> \
                               \   <script src=\"http://localhost:3040/static/user.js\"></script> \
                               \ </body>\
                               \ </html> "]
