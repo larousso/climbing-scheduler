@@ -123,6 +123,23 @@ main = do
                               \ </body>\
                               \ </html> "]
 
+          get "/home/:userLogin" $ do
+            userLogin <- param "userLogin"
+            html $ mconcat [ " <!doctype> \
+                              \ <html> \
+                              \ <head> \
+                              \ <title>purescript-webpack-example</title> \
+                              \ <meta name=\"viewport\" content=\"width=device-width\">\
+                              \ <link rel=\"stylesheet\" href=\"/css/app.css\" >\
+                              \ <link href=\"https://fonts.googleapis.com/css?family=Anton|Gloria+Hallelujah|Raleway\" rel=\"stylesheet\">\
+                              \ </head> \
+                              \ <body> \
+                              \   <div id=\"app\"></div> \
+                              \   <script> var _userLogin=", userLogin, ";</script> \
+                              \   <script src=\"http://localhost:3040/static/user.js\"></script> \
+                              \ </body>\
+                              \ </html> "]
+
           post "/api/login" $ do
             loginForm <- jsonData
             session <- liftIO $ doLogin pool loginForm

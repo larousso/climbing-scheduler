@@ -1,6 +1,7 @@
 module.exports = {
   entry: {
     home: './src/home/home.js',
+    user: './src/user/User.js',
   },
   output: {
     path: __dirname + '/dist',
