@@ -1,4 +1,4 @@
-module Main exposing (..)
+port module Main exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -38,7 +38,22 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ text "Hey"
+        [ nav [ classList [ ( "navbar", True ), ( "navbar-default", True ) ] ]
+            [ div [ class "box-container" ]
+                [ div [ classList [ ( "navbar-header", True ) ] ]
+                    [ a [ class "brand" ]
+                        [ span [ class "red-text" ] [ text "Climbing" ]
+                        , span [ class "yellow-text" ] [ text "scheduler" ]
+                        ]
+                    ]
+                ]
+            ]
+        , div [ classList [ ( "main-container", True ) ] ]
+            [ div [ classList [ ( "light-zone", True ), ( "main-zone", True ) ] ]
+                [ h1 [ class "center" ] [ text "My scheduler" ]
+                , div [ id "calendar" ] []
+                ]
+            ]
         ]
 
 

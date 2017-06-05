@@ -16,6 +16,14 @@ html, body {
   margin-top: 20px;
 }
 
+.main-zone {
+  width: 1000px;
+}
+
+.light-zone {
+  background-color: #F2F2F2;
+}
+
 .box {
   flex: 1;
 }
@@ -215,4 +223,34 @@ html, body {
 
 .btn:focus {
   outline: inherit;
+}
+
+.center {
+ text-align: center;
+}
+
+.brand {
+  font-family: 'Anton', sans-serif;
+}
+
+.brand span {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.navbar-header {
+  padding: 5px;
+}
+
+
+.navbar {
+  height: 40px;
+  padding-left: 20px;
+  padding-right: : 20px;
+}
+
+.navbar-default {
+  border-bottom: 1px solid transparent;
+  border-color: #848484;
+  background-color: #BDBDBD;
 }

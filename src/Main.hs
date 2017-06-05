@@ -131,6 +131,7 @@ main = do
                               \ <title>purescript-webpack-example</title> \
                               \ <meta name=\"viewport\" content=\"width=device-width\">\
                               \ <link rel=\"stylesheet\" href=\"/css/app.css\" >\
+                              \ <link href=\"http://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.4.0/fullcalendar.min.css\" rel=\"stylesheet\">\
                               \ <link href=\"https://fonts.googleapis.com/css?family=Anton|Gloria+Hallelujah|Raleway\" rel=\"stylesheet\">\
                               \ </head> \
                               \ <body> \
