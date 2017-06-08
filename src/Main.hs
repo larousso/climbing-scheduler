@@ -1,7 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
-
 import Db
 import Users
 import Slots
@@ -30,11 +28,14 @@ import qualified Data.UUID as UUID
 import Data.Word
 import Data.Aeson
 import Database.PostgreSQL.Simple
+import System.Environment (lookupEnv)
+
 
 
 data AppConfig = AppConfig {
   secret:: String,
-  dbConfig:: Db.DbConfig
+  dbConfig:: Db.DbConfig,
+  port:: Int
 }
 
 makeDbConfig :: C.Config -> IO (Maybe Db.DbConfig)
@@ -51,6 +52,15 @@ makeDbConfig conf = do
                     <*> user
                     <*> password
 
+loadPort:: IO (Maybe Int)
+loadPort = do
+  port <- lookupEnv "PORT"
+  let e = case port of
+         Nothing -> Just 3000
+         Just s -> Just (read s :: Int)
+  return e
+
+
 loadSecret::  C.Config -> IO (Maybe String)
 loadSecret conf = C.lookup conf "secret" :: IO (Maybe String)
 
@@ -58,7 +68,8 @@ loadConfig :: C.Config -> IO (Maybe AppConfig)
 loadConfig conf = do
   dbConfig <- makeDbConfig conf
   secret <- loadSecret conf
-  return $ AppConfig <$> secret <*> dbConfig
+  port <- loadPort
+  return $ AppConfig <$> secret <*> dbConfig <*> port
 
 auth :: Application -> Request -> (Response -> IO ResponseReceived) -> IO ResponseReceived
 auth app = app
@@ -101,10 +112,10 @@ main = do
   conf <- loadConfig loadedConf
   case conf of
     Nothing -> putStrLn "Error getting config, terminating ..."
-    Just (AppConfig secret dbConf) -> do
+    Just (AppConfig secret dbConf port) -> do
         pool <- createPool (newConn dbConf) close 1 40 10
         _ <- initDb pool
-        scotty 3000 $ do
+        scotty port $ do
           middleware $ staticPolicy (noDots >-> addBase "static") -- serve static files
           middleware auth
 

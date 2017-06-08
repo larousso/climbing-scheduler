@@ -17,8 +17,8 @@ $(document).ready(function() {
     // page is now ready, initialize the calendar...
 
     $('#calendar').fullCalendar({
-        dayClick: function(day) {
-          console.log('a day has been clicked!', day);
+        dayClick: function(day, other) {
+          console.log('a day has been clicked!', day, other);
         }
     })
 
