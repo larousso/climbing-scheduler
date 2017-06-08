@@ -12,10 +12,11 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (field, decodeString)
 import Debug
 import Native.Navigation
+import Date exposing (..)
 
 
 type Msg
-    = Toto
+    = DayClicked String
 
 
 type alias Flags =
@@ -23,27 +24,37 @@ type alias Flags =
 
 
 type alias Model =
-    { mode : String, user : String }
+    { mode : String, user : String, dayClicked : Maybe Date }
 
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( Model "" flags.user, Cmd.none )
+    ( Model "" flags.user Nothing, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Toto ->
-            ( model, Cmd.none )
+        DayClicked date ->
+            case fromString date of
+                Ok d ->
+                    Debug.log "New date"
+                        ( { model | dayClicked = Just d }, Cmd.none )
+
+                Err error ->
+                    Debug.crash ("Error parsing date : " ++ date)
+                        ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    dayClicked DayClicked
 
 
 port events : String -> Cmd msg
+
+
+port dayClicked : (String -> msg) -> Sub msg
 
 
 view : Model -> Html Msg
