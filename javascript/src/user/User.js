@@ -2,14 +2,24 @@ import $ from 'jquery'
 import fullcalendar from 'fullcalendar'
 import Elm from "./User.elm";
 
-const app = Elm.Main.embed(document.getElementById('app'));
+var user = window.location.pathname.split( '/' ).slice(-1)[0].substring(1);
+
+const app = Elm.Main.embed(document.getElementById('app'), {
+  user: user
+});
+
+app.ports.events.subscribe(function(event) {
+  console.log(event);
+})
 
 $(document).ready(function() {
 
     // page is now ready, initialize the calendar...
 
     $('#calendar').fullCalendar({
-        // put your options and callbacks here
+        dayClick: function(day) {
+          console.log('a day has been clicked!', day);
+        }
     })
 
 });

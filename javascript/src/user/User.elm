@@ -1,6 +1,10 @@
 port module Main exposing (..)
 
 import Html exposing (..)
+
+
+--import Html.App as App
+
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http as Http exposing (..)
@@ -14,13 +18,17 @@ type Msg
     = Toto
 
 
+type alias Flags =
+    { user : String }
+
+
 type alias Model =
-    { mode : String }
+    { mode : String, user : String }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( Model "", Cmd.none )
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( Model "" flags.user, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -33,6 +41,9 @@ update msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
+
+
+port events : String -> Cmd msg
 
 
 view : Model -> Html Msg
@@ -57,9 +68,9 @@ view model =
         ]
 
 
-main : Program Never Model Msg
+main : Program Flags Model Msg
 main =
-    Html.program
+    Html.programWithFlags
         { init = init
         , view = view
         , update = update
