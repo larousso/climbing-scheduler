@@ -16,15 +16,19 @@ import Date exposing (..)
 
 
 type Msg
-    = DayClicked String
+    = DayClicked String Int Int
 
 
 type alias Flags =
     { user : String }
 
 
+type alias CalendarEvent =
+    { date : Date, posX : Int, posY : Int }
+
+
 type alias Model =
-    { mode : String, user : String, dayClicked : Maybe Date }
+    { mode : String, user : String, dayClicked : Maybe CalendarEvent }
 
 
 init : Flags -> ( Model, Cmd Msg )
@@ -35,11 +39,15 @@ init flags =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        DayClicked date ->
+        DayClicked date x y ->
             case fromString date of
                 Ok d ->
-                    Debug.log "New date"
-                        ( { model | dayClicked = Just d }, Cmd.none )
+                    let
+                        calendarEvent =
+                            CalendarEvent d x y
+                    in
+                        Debug.log "New date"
+                            ( { model | dayClicked = Just calendarEvent }, Cmd.none )
 
                 Err error ->
                     Debug.crash ("Error parsing date : " ++ date)
@@ -48,13 +56,23 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    dayClicked DayClicked
+    dayClicked (\( pos, x, y ) -> DayClicked pos x y)
 
 
 port events : String -> Cmd msg
 
 
-port dayClicked : (String -> msg) -> Sub msg
+port dayClicked : (( String, Int, Int ) -> msg) -> Sub msg
+
+
+displayNewEvent : Maybe CalendarEvent -> List (Html.Html msg)
+displayNewEvent mayBeEvent =
+    case mayBeEvent of
+        Just event ->
+            []
+
+        Nothing ->
+            []
 
 
 view : Model -> Html Msg
@@ -74,6 +92,7 @@ view model =
             [ div [ classList [ ( "light-zone", True ), ( "main-zone", True ) ] ]
                 [ h1 [ class "center" ] [ text "My scheduler" ]
                 , div [ id "calendar" ] []
+                , div [] (displayNewEvent model.dayClicked)
                 ]
             ]
         ]
