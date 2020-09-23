@@ -9,8 +9,8 @@
     "start": "NODE_ENV=dev webpack-dev-server -d --hot --colors --inline --port 3040"
   },
   "dependencies": {
-    "react": "^15.5.4",
-    "react-dom": "^15.5.4",
+    "react": "^16.5.0",
+    "react-dom": "^16.5.0",
     "react-redux": "^5.0.4",
     "redux": "^3.6.0",
     "redux-thunk": "^2.2.0"
